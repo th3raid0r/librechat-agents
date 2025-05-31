@@ -4,7 +4,7 @@ import type { RunnableConfig } from '@langchain/core/runnables';
 import type { BaseReranker } from './rerankers';
 import { DATE_RANGE } from './schema';
 
-export type SearchProvider = 'serper' | 'searxng';
+export type SearchProvider = 'serper' | 'searxng' | 'kagi';
 export type RerankerType = 'infinity' | 'jina' | 'cohere' | 'none';
 
 export interface Highlight {
@@ -65,6 +65,7 @@ export interface Source {
 export interface SearchConfig {
   searchProvider?: SearchProvider;
   serperApiKey?: string;
+  kagiApiKey?: string;
   searxngInstanceUrl?: string;
   searxngApiKey?: string;
 }
@@ -149,6 +150,7 @@ export interface SearchToolConfig
   safeSearch?: SafeSearchLevel;
   jinaApiKey?: string;
   cohereApiKey?: string;
+  kagiApiKey?: string;
   rerankerType?: RerankerType;
   scraperTimeout?: number;
   onSearchResults?: (
@@ -591,6 +593,31 @@ export type ProcessSourcesFields = {
   proMode: boolean;
   onGetHighlights: SearchToolConfig['onGetHighlights'];
 };
+
+/** Kagi API */
+export interface KagiImage {
+  url: string;
+  height?: number;
+  width?: number;
+}
+
+export interface KagiSearchResult {
+  readonly t: 0;
+  url: string;
+  title: string;
+  snippet?: string;
+  published?: string;
+  thumbnail?: KagiImage;
+}
+
+export interface KagiRelatedSearches {
+  readonly t: 1;
+  list: string[];
+}
+
+export type KagiSearchObject = KagiSearchResult | KagiRelatedSearches;
+
+export type KagiResultData = KagiSearchObject[];
 
 export type SearchToolSchema = z.ZodObject<
   {

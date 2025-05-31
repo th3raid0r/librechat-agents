@@ -337,6 +337,7 @@ export const createSearchTool = (
   const {
     searchProvider = 'serper',
     serperApiKey,
+    kagiApiKey,
     searxngInstanceUrl,
     searxngApiKey,
     rerankerType = 'cohere',
@@ -380,6 +381,7 @@ export const createSearchTool = (
   const searchAPI = createSearchAPI({
     searchProvider,
     serperApiKey,
+    kagiApiKey,
     searxngInstanceUrl,
     searxngApiKey,
   });

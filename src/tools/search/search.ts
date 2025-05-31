@@ -233,7 +233,6 @@ const createSearXNGAPI = (
   const getSources = async ({
     query,
     numResults = 8,
-    type,
   }: t.GetSourcesParams): Promise<t.SearchResult> => {
     if (!query.trim()) {
       return { success: false, error: 'Query cannot be empty' };
@@ -250,13 +249,13 @@ const createSearXNGAPI = (
         searchUrl = searchUrl.replace(/\/$/, '') + '/search';
       }
 
-      // Determine the search category based on the type
+      // Determine the search category based on the _type
       let category = 'general';
-      if (type === 'images') {
+      if (_type === 'images') {
         category = 'images';
-      } else if (type === 'videos') {
+      } else if (_type === 'videos') {
         category = 'videos';
-      } else if (type === 'news') {
+      } else if (_type === 'news') {
         category = 'news';
       }
 
@@ -331,6 +330,95 @@ const createSearXNGAPI = (
   return { getSources };
 };
 
+const createKagiAPI = (
+  apiKey?: string
+): {
+  getSources: (params: t.GetSourcesParams) => Promise<t.SearchResult>;
+} => {
+  const config = {
+    apiKey: apiKey ?? process.env.KAGI_API_KEY,
+    apiUrl: 'https://kagi.com/api/v0/search',
+    timeout: 10000,
+  };
+
+  if (config.apiKey == null || config.apiKey === '') {
+    throw new Error('KAGI_API_KEY is required for Kagi API');
+  }
+
+  const getSources = async ({
+    query,
+    numResults = 8,
+    _type,
+  }: t.GetSourcesParams): Promise<t.SearchResult> => {
+    if (!query.trim()) {
+      return { success: false, error: 'Query cannot be empty' };
+    }
+
+    try {
+      // Kagi API only supports web search
+      const url = new URL(config.apiUrl);
+      url.searchParams.set('q', query);
+      url.searchParams.set(
+        'limit',
+        Math.min(Math.max(1, numResults), 100).toString()
+      );
+
+      const response = await axios.get<t.KagiResultData>(url.toString(), {
+        headers: {
+          Authorization: `Bot ${config.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: config.timeout,
+      });
+
+      const data = response.data;
+
+      // Transform Kagi results to match our SearchResultData format
+      const organicResults: t.OrganicResult[] = [];
+      const relatedSearches: Array<{ query: string }> = [];
+
+      data.forEach((item) => {
+        if (item.t === 0) {
+          // Search result
+          const result = item as t.KagiSearchResult;
+          organicResults.push({
+            title: result.title,
+            link: result.url,
+            snippet: result.snippet,
+            date: result.published,
+          });
+        } else {
+          // Related searches
+          const relatedItem = item as t.KagiRelatedSearches;
+          relatedItem.list.forEach((query) => {
+            relatedSearches.push({ query });
+          });
+        }
+      });
+
+      const results: t.SearchResultData = {
+        organic: organicResults,
+        topStories: [],
+        images: [],
+        videos: [],
+        news: [],
+        relatedSearches,
+      };
+
+      return { success: true, data: results };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: `Kagi API request failed: ${errorMessage}`,
+      };
+    }
+  };
+
+  return { getSources };
+};
+
 export const createSearchAPI = (
   config: t.SearchConfig
 ): {
@@ -339,6 +427,7 @@ export const createSearchAPI = (
   const {
     searchProvider = 'serper',
     serperApiKey,
+    kagiApiKey,
     searxngInstanceUrl,
     searxngApiKey,
   } = config;
@@ -347,9 +436,11 @@ export const createSearchAPI = (
     return createSerperAPI(serperApiKey);
   } else if (searchProvider.toLowerCase() === 'searxng') {
     return createSearXNGAPI(searxngInstanceUrl, searxngApiKey);
+  } else if (searchProvider.toLowerCase() === 'kagi') {
+    return createKagiAPI(kagiApiKey);
   } else {
     throw new Error(
-      `Invalid search provider: ${searchProvider}. Must be 'serper' or 'searxng'`
+      `Invalid search provider: ${searchProvider}. Must be 'serper', 'searxng', or 'kagi'`
     );
   }
 };
