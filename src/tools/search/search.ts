@@ -233,6 +233,7 @@ const createSearXNGAPI = (
   const getSources = async ({
     query,
     numResults = 8,
+    type,
   }: t.GetSourcesParams): Promise<t.SearchResult> => {
     if (!query.trim()) {
       return { success: false, error: 'Query cannot be empty' };
@@ -251,11 +252,11 @@ const createSearXNGAPI = (
 
       // Determine the search category based on the _type
       let category = 'general';
-      if (_type === 'images') {
+      if (type === 'images') {
         category = 'images';
-      } else if (_type === 'videos') {
+      } else if (type === 'videos') {
         category = 'videos';
-      } else if (_type === 'news') {
+      } else if (type === 'news') {
         category = 'news';
       }
 
@@ -348,7 +349,6 @@ const createKagiAPI = (
   const getSources = async ({
     query,
     numResults = 8,
-    _type,
   }: t.GetSourcesParams): Promise<t.SearchResult> => {
     if (!query.trim()) {
       return { success: false, error: 'Query cannot be empty' };
